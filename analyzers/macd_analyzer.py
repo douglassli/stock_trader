@@ -3,8 +3,7 @@ from analyzers.base_analyzer import BaseAnalyzer
 
 # Exponential Moving Average Analyzer
 class MACDAnalyzer(BaseAnalyzer):
-    def __init__(self, period_aggregator, fast_length=12, slow_length=26, signal_length=9, smoothing=2):
-        super().__init__(period_aggregator)
+    def __init__(self, fast_length=12, slow_length=26, signal_length=9, smoothing=2):
         self.slow_averages = []
         self.fast_averages = []
         self.macd_values = []
@@ -26,8 +25,8 @@ class MACDAnalyzer(BaseAnalyzer):
         else:
             averages.append(None)
 
-    def update_values(self):
-        closes = self.period_aggregator.get_last_closes(self.slow_length)
+    def update_values(self, period_aggregator):
+        closes = period_aggregator.get_last_closes(self.slow_length)
         self.update_ema(closes, self.fast_averages, self.per12_mult, self.fast_length)
         self.update_ema(closes, self.slow_averages, self.per26_mult, self.slow_length)
 

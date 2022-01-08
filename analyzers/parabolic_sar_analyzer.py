@@ -3,8 +3,7 @@ from analyzers.base_analyzer import BaseAnalyzer
 
 # Parabolic Stop And Reverse Analyzer
 class PSARAnalyzer(BaseAnalyzer):
-    def __init__(self, period_aggregator, step=0.02, max_step=0.2):
-        super().__init__(period_aggregator)
+    def __init__(self, step=0.02, max_step=0.2):
         self.accel_factor = 0.02
         self.cur_accel_factor = self.accel_factor
         self.step = step
@@ -17,21 +16,21 @@ class PSARAnalyzer(BaseAnalyzer):
 
     # See below for math
     # https://school.stockcharts.com/doku.php?id=technical_indicators:parabolic_sar
-    def update_values(self):
-        if self.period_aggregator.num_periods() < self.wait_length:
+    def update_values(self, period_aggregator):
+        if period_aggregator.num_periods() < self.wait_length:
             return
         elif len(self.sars) == 0:
-            last_two_closes = self.period_aggregator.get_last_values("close", 2)
+            last_two_closes = period_aggregator.get_last_values("close", 2)
             self.is_rising = last_two_closes[-1] > last_two_closes[-2]
 
-            self.high_ep = max(self.period_aggregator.get_last_values("high", self.wait_length))
-            self.low_ep = max(self.period_aggregator.get_last_values("low", self.wait_length))
+            self.high_ep = max(period_aggregator.get_last_values("high", self.wait_length))
+            self.low_ep = max(period_aggregator.get_last_values("low", self.wait_length))
 
             start_sars = self.low_ep if self.is_rising else self.high_ep
             self.sars.append(start_sars)
 
-        last_low = self.period_aggregator.get_last_value("low")
-        last_high = self.period_aggregator.get_last_value("high")
+        last_low = period_aggregator.get_last_value("low")
+        last_high = period_aggregator.get_last_value("high")
         flip = (self.is_rising and last_low < self.sars[-1]) or \
                (not self.is_rising and last_high > self.sars[-1])
 

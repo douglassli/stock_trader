@@ -4,8 +4,7 @@ from analyzers.base_analyzer import BaseAnalyzer
 
 # Arnaud Legoux Moving Average Analyzer
 class ALMAAnalyzer(BaseAnalyzer):
-    def __init__(self, period_aggregator, length=10, sigma=6, offset=0.85):
-        super().__init__(period_aggregator)
+    def __init__(self, length=10, sigma=6, offset=0.85):
         self.length = length  # Number of periods to average
         self.sigma = sigma
         self.offset = offset
@@ -13,9 +12,9 @@ class ALMAAnalyzer(BaseAnalyzer):
 
     # See below for math
     # https://www.prorealcode.com/prorealtime-indicators/alma-arnaud-legoux-moving-average/
-    def update_values(self):
-        if self.period_aggregator.num_periods() >= self.length:
-            closes = self.period_aggregator.get_last_closes(self.length)
+    def update_values(self, period_aggregator):
+        if period_aggregator.num_periods() >= self.length:
+            closes = period_aggregator.get_last_closes(self.length)
 
             m = (self.offset * (self.length - 1))
             s = self.length / self.sigma

@@ -6,11 +6,6 @@ class GenericMACrossStrategy:
         self.long_ma_analyzer = long_ma_analyzer
         self.state = "tracking"
 
-    def process_quote(self, quote):
-        self.short_ma_analyzer.process_quote(quote)
-        self.long_ma_analyzer.process_quote(quote)
-        self.make_decision()
-
     def make_decision(self):
         for a in [self.short_ma_analyzer, self.long_ma_analyzer]:
             if len(a.averages) < 2 or a.averages[-2] is None:

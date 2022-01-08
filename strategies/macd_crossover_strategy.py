@@ -5,10 +5,6 @@ class MACDCrossStrategy:
         self.macd_analyzer = macd_analyzer
         self.state = "tracking"
 
-    def process_quote(self, quote):
-        self.macd_analyzer.process_quote(quote)
-        self.make_decision()
-
     def make_decision(self):
         if len(self.macd_analyzer.signal_values) < 2 or self.macd_analyzer.signal_values[-1] is None:
             return

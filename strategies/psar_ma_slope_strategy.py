@@ -6,10 +6,6 @@ class PSARSlopeStrategy:
         self.ma_analyzer = ma_analyzer
         self.state = "tracking"
 
-    def process_quote(self, quote):
-        self.psar_analyzer.process_quote(quote)
-        self.make_decision()
-
     def make_decision(self):
         if len(self.psar_analyzer.sars) == 0 or \
                 len(self.ma_analyzer.averages) < 2 or \

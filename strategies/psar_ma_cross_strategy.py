@@ -11,14 +11,10 @@ class PSARCrossStrategy:
         self.state = "tracking"
         self.logger = get_logger("psar_strat")
 
-    def process_quote(self, quote):
-        self.psar_analyzer.process_quote(quote)
-        self.make_decision()
-
-    def update_analyzer_vals(self):
-        self.psar_analyzer.update_values()
-        self.short_ma_analyzer.update_values()
-        self.long_ma_analyzer.update_values()
+    def update_analyzer_vals(self, period_aggregator):
+        self.psar_analyzer.update_values(period_aggregator)
+        self.short_ma_analyzer.update_values(period_aggregator)
+        self.long_ma_analyzer.update_values(period_aggregator)
 
     def make_decision(self):
         # old_state = self.state

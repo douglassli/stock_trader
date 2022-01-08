@@ -14,14 +14,14 @@ class SimulationAnalyzerManager:
             finished_period = per_agg.process_quote(quote)
             if finished_period:
                 for analyzer in self.analyzers[window_size]:
-                    analyzer.update_values()
+                    analyzer.update_values(per_agg)
 
     def process_period(self, period):
         per_agg = self.period_aggregators[period.timeframe]
         per_agg.process_period(period)
 
         for analyzer in self.analyzers[period.timeframe]:
-            analyzer.update_values()
+            analyzer.update_values(per_agg)
 
     def get_period_sizes(self):
         return self.period_aggregators.keys()

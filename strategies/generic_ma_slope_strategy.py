@@ -5,10 +5,6 @@ class GenericSlopeStrategy:
         self.ma_analyzer = ma_analyzer
         self.state = "tracking"
 
-    def process_quote(self, quote):
-        self.ma_analyzer.process_quote(quote)
-        self.make_decision()
-
     def make_decision(self):
         if len(self.ma_analyzer.averages) < 2 or self.ma_analyzer.averages[-2] is None:
             return

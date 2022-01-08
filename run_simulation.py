@@ -85,7 +85,7 @@ def generate_generic_ma_slope_strats(symbol, init_cash, ma_analyzer_class, strat
     for window_size in window_sizes:
         for roll_length in roll_lengths:
             name = f"{strat_prefix}_slope_{window_size}_{roll_length}"
-            analyzer = ma_analyzer_class(aggregators[window_size], roll_length)
+            analyzer = ma_analyzer_class(roll_length)
             analyzers[(window_size, roll_length)] = analyzer
             strategies[name] = GenericSlopeStrategy(SimulatedBrokerage(init_cash), symbol, analyzer)
 
@@ -132,10 +132,10 @@ def generate_generic_ma_crossing_strats(symbol, init_cash, ma_analyzer_class, st
         for pair in length_pairs:
             name = f"{strat_prefix}_cross_{window_size}_{pair[0]}_{pair[1]}"
             if (window_size, pair[0]) not in analyzers:
-                analyzers[(window_size, pair[0])] = ma_analyzer_class(aggregators[window_size], pair[0])
+                analyzers[(window_size, pair[0])] = ma_analyzer_class(pair[0])
 
             if (window_size, pair[1]) not in analyzers:
-                analyzers[(window_size, pair[1])] = ma_analyzer_class(aggregators[window_size], pair[1])
+                analyzers[(window_size, pair[1])] = ma_analyzer_class(pair[1])
 
             strategy = GenericMACrossStrategy(
                 SimulatedBrokerage(init_cash),
@@ -220,7 +220,7 @@ def generate_psar_strats(symbol, init_cash):
         for step_size in step_sizes:
             for max_step in max_steps:
                 name = f"psar_{window_size}_{step_size}_{max_step}"
-                analyzer = PSARAnalyzer(aggregators[window_size], step_size, max_step)
+                analyzer = PSARAnalyzer(step_size, max_step)
                 analyzers[(window_size, name)] = analyzer
 
                 strategy = PSARStrategy(
@@ -260,13 +260,13 @@ def generate_psar_ma_cross_strats(symbol, init_cash):
                         name = f"psar_ma_cross_{window_size}_{pair[0]}_{pair[1]}_{step_size}_{max_step}_{source}"
 
                         if (window_size, "ma", pair[0], source) not in analyzers:
-                            analyzers[(window_size, "ma", pair[0], source)] = VWMAAnalyzer(aggregators[window_size], pair[0], source=source)
+                            analyzers[(window_size, "ma", pair[0], source)] = VWMAAnalyzer(pair[0], source=source)
 
                         if (window_size, "ma", pair[1], source) not in analyzers:
-                            analyzers[(window_size, "ma", pair[1], source)] = VWMAAnalyzer(aggregators[window_size], pair[1], source=source)
+                            analyzers[(window_size, "ma", pair[1], source)] = VWMAAnalyzer(pair[1], source=source)
 
                         if (window_size, f"psar_{step_size}_{max_step}") not in analyzers:
-                            analyzers[(window_size, f"psar_{step_size}_{max_step}")] = PSARAnalyzer(aggregators[window_size], step_size, max_step)
+                            analyzers[(window_size, f"psar_{step_size}_{max_step}")] = PSARAnalyzer(step_size, max_step)
 
                         strategy = PSARCrossStrategy(
                             SimulatedBrokerage(init_cash),
