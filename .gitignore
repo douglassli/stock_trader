@@ -1,0 +1,8 @@
+__pycache__
+*.pyc
+.idea
+old/
+data_sets/
+logs/
+simulation_output/
+.DS_Store

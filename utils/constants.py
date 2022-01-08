@@ -1,0 +1,14 @@
+PAPER = "paper"
+LIVE = "live"
+
+PAPER_KEY_ENV_VAR = "ALPACA_PAPER_KEY"
+PAPER_SECRET_ENV_VAR = "ALPACA_PAPER_SECRET"
+
+LIVE_KEY_ENV_VAR = "ALPACA_LIVE_KEY"
+LIVE_SECRET_ENV_VAR = "ALPACA_LIVE_SECRET"
+
+PAPER_ENDPOINT = "https://paper-api.alpaca.markets"
+
+LIVE_ENDPOINT = "https://api.alpaca.markets"
+
+DATA_FEED = "SIP"
