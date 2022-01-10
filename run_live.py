@@ -26,8 +26,8 @@ class SingleStockLiveTrader:
     def generate_strategies(self):
         for symbol in self.tracking_symbols:
             period_agg = PeriodAggregator(240)
-            vwma_fast = VWMAAnalyzer(period_agg, 25)
-            vwma_slow = VWMAAnalyzer(period_agg, 30)
+            vwma_fast = VWMAAnalyzer(25)
+            vwma_slow = VWMAAnalyzer(30)
             psar = PSARAnalyzer(step=0.02, max_step=0.1)
             psar_ma_cross_strat = PSARCrossStrategy(self.brokerage, symbol, psar, vwma_fast, vwma_slow)
 

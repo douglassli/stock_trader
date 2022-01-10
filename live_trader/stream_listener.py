@@ -14,7 +14,7 @@ class StreamListener:
         self.period_counts = {}
         self.logger = get_logger("stream_listener")
 
-    def trade_update_callback(self, trade_update):
+    async def trade_update_callback(self, trade_update):
         order = trade_update.order
         trade_update_msg = {
             "symbol": order.symbol,
@@ -63,7 +63,7 @@ class StreamListener:
         stream = get_alpaca_stream(self.account_type)
         stream.subscribe_trade_updates(self.trade_update_callback)
         for symbol in self.strategies.keys():
-            stream.subscribe_quotes(symbol, self.get_quote_call_back(symbol))
+            stream.subscribe_quotes(self.get_quote_call_back(symbol), symbol)
         stream.run()
 
 

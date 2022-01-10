@@ -12,15 +12,15 @@ def create_strats_and_aggs(symbols):
 
     for symbol in symbols:
         period_agg = PeriodAggregator(240)
-        vwma_fast = VWMAAnalyzer(period_agg, 25)
-        vwma_slow = VWMAAnalyzer(period_agg, 30)
+        vwma_fast = VWMAAnalyzer(25, source="hlc3")
+        vwma_slow = VWMAAnalyzer(30, source="hlc3")
         psar = PSARAnalyzer(step=0.02, max_step=0.1)
         psar_ma_cross_strat = PSARCrossStrategy(None, symbol, psar, vwma_fast, vwma_slow)
 
         strats[symbol] = psar_ma_cross_strat
         per_aggs[symbol] = period_agg
 
-    return strategies, per_aggs
+    return strats, per_aggs
 
 
 if __name__ == '__main__':

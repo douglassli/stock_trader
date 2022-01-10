@@ -39,7 +39,9 @@ class LiveTradeManager:
     def start_trading(self, strategies, period_aggregators):
         p_args = (self.account_type, self.signal_queue, self.trade_update_queue, strategies, period_aggregators)
         self.listener_process = Process(target=start_listener_process, args=p_args)
+        self.logger.debug("Listener process starting...")
         self.listener_process.start()
+        self.logger.debug("Starting main loop...")
         self.main_loop()
 
     def main_loop(self):
@@ -68,6 +70,7 @@ class LiveTradeManager:
 
     def fill_order(self, trade_update):
         order = trade_update.order
+        self.logger.info(f"Filling {order.side} order for {order.symbol}")
 
         self.open_orders.pop(order.id, None)
         if order.side == "buy":
@@ -81,7 +84,7 @@ class LiveTradeManager:
             signals[signal['symbol']] = signal
 
         buy_signals = []
-        for symbol, signal in signals:
+        for symbol, signal in signals.items():
             if symbol in self.positions and signal["type"] == "sell":
                 self.exit_position(signal)
             elif signal["type"] == "buy" and symbol not in self.positions:
@@ -97,6 +100,8 @@ class LiveTradeManager:
         symbol = signal['symbol']
         if symbol in self.positions or len(self.positions) >= self.max_positions:
             return
+
+        self.logger.info(f"Entering {symbol} position")
 
         try:
             order = self.brokerage.buy_stock(symbol)
@@ -123,6 +128,8 @@ class LiveTradeManager:
             self.logger.error(f"Attempted to sell position before buy order was filled symbol: {symbol}")
             self.shutdown()
 
+        self.logger.info(f"Exiting {symbol} position")
+
         try:
             order = self.brokerage.sell_stock(symbol)
             self.open_orders[symbol] = {
@@ -139,6 +146,7 @@ class LiveTradeManager:
 
     def synchronize_account(self):
         # TODO
+        self.logger.warn("Synchronizing account")
         pass
 
     def shutdown(self):
