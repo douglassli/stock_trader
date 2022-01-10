@@ -1,13 +1,14 @@
 from alpaca_trade_api.rest import APIError
 from exceptions import MissingPositionError, PositionAlreadyExistsError, TooManyPositionsError, NotEnoughCashError
-from utils.utils import get_logger
+from utils.utils import get_logger, get_alpaca_rest_api
 
 
 class AlpacaBrokerage:
-    def __init__(self, api, num_stocks=1, dry_run=True):
+    def __init__(self, account_type, num_stocks=1, dry_run=True):
+        self.account_type = account_type
         self.num_stocks = num_stocks
         self.dry_run = dry_run
-        self.api = api
+        self.api = get_alpaca_rest_api(self.account_type)
         self.logger = get_logger("broker")
 
     def get_position(self, symbol):
@@ -29,7 +30,7 @@ class AlpacaBrokerage:
 
         self.logger.info(f"Selling quantity {position.qty} of position {symb}")
         if not self.dry_run:
-            self.api.close_position(symb, qty=position.qty)
+            return self.api.close_position(symb, qty=position.qty)
 
     def buy_stock(self, symb):
         self.logger.debug(f"Starting stock buy for {symb}")
@@ -57,4 +58,4 @@ class AlpacaBrokerage:
 
         self.logger.info(f"Buying quantity {quantity} of stock {symb}")
         if not self.dry_run:
-            resp = self.api.submit_order(symb, qty=quantity, side="buy", type="market", time_in_force="day")
+            return self.api.submit_order(symb, qty=quantity, side="buy", type="market", time_in_force="day")

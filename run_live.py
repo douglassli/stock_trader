@@ -28,7 +28,7 @@ class SingleStockLiveTrader:
             period_agg = PeriodAggregator(240)
             vwma_fast = VWMAAnalyzer(period_agg, 25)
             vwma_slow = VWMAAnalyzer(period_agg, 30)
-            psar = PSARAnalyzer(period_agg, step=0.02, max_step=0.1)
+            psar = PSARAnalyzer(step=0.02, max_step=0.1)
             psar_ma_cross_strat = PSARCrossStrategy(self.brokerage, symbol, psar, vwma_fast, vwma_slow)
 
             self.strategies[symbol] = psar_ma_cross_strat

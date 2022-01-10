@@ -1,11 +1,11 @@
-from utils.utils import get_logger
+from utils.utils import get_logger, get_alpaca_stream
 from datetime import datetime
 from utils.quote import Quote
 
 
 class StreamListener:
-    def __init__(self, stream, signal_queue, trade_update_queue, strategies, period_aggregators):
-        self.stream = stream
+    def __init__(self, account_type, signal_queue, trade_update_queue, strategies, period_aggregators):
+        self.account_type = account_type
         self.signal_queue = signal_queue
         self.trade_update_queue = trade_update_queue
         self.strategies = strategies
@@ -49,7 +49,7 @@ class StreamListener:
             self.quote_counts[symbol] = 0
             strategy.update_analyzer_vals(period_aggregator)
 
-            signal = strategy.generate_signal()
+            signal = strategy.generate_signal()  # TODO
             if signal is not None:
                 signal_message = {
                     "symbol": symbol,
@@ -60,7 +60,13 @@ class StreamListener:
                 self.signal_queue.put(signal_message)
 
     def start(self):
-        self.stream.subscribe_trade_updates(self.trade_update_callback)
+        stream = get_alpaca_stream(self.account_type)
+        stream.subscribe_trade_updates(self.trade_update_callback)
         for symbol in self.strategies.keys():
-            self.stream.subscribe_quotes(symbol, self.get_quote_call_back(symbol))
-        self.stream.run()
+            stream.subscribe_quotes(symbol, self.get_quote_call_back(symbol))
+        stream.run()
+
+
+def start_listener_process(account_type, signal_queue, trade_update_queue, strategies, period_aggregators):
+    stream_listener = StreamListener(account_type, signal_queue, trade_update_queue, strategies, period_aggregators)
+    stream_listener.start()

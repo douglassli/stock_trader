@@ -7,6 +7,7 @@ from alpaca_trade_api.common import URL
 import logging
 import sys
 from datetime import datetime
+from queue import Empty
 
 
 def get_logger(name, log_file_name=f"logs/{datetime.now().isoformat()}.log"):
@@ -65,3 +66,12 @@ def parse_timestamp(ts):
     except Exception as e:
         print(ts)
         raise e
+
+
+def get_queue_items(queue):
+    while True:
+        try:
+            item = queue.get_nowait()
+            yield item
+        except Empty:
+            return

@@ -9,25 +9,28 @@ class PSARCrossStrategy:
         self.short_ma_analyzer = short_ma_analyzer
         self.long_ma_analyzer = long_ma_analyzer
         self.state = "tracking"
-        self.logger = get_logger("psar_strat")
 
     def update_analyzer_vals(self, period_aggregator):
         self.psar_analyzer.update_values(period_aggregator)
         self.short_ma_analyzer.update_values(period_aggregator)
         self.long_ma_analyzer.update_values(period_aggregator)
 
-    def make_decision(self):
-        # old_state = self.state
-
-        if self.state == "tracking":
-            return
-
+    def have_enough_info(self):
         if len(self.psar_analyzer.sars) == 0:
-            return
+            return False
 
         for a in [self.short_ma_analyzer, self.long_ma_analyzer]:
             if len(a.averages) < 2 or a.averages[-2] is None:
-                return
+                return False
+
+        return True
+
+    def make_decision(self):
+        if self.state == "tracking":
+            return
+
+        if not self.have_enough_info():
+            return
 
         short_val = self.short_ma_analyzer.averages[-1]
         long_val = self.long_ma_analyzer.averages[-1]
@@ -39,4 +42,14 @@ class PSARCrossStrategy:
             self.brokerage.sell_stock(self.symbol)
             self.state = "buy"
 
-        # self.logger.debug(f"PSAR MA Cross {self.symbol} made decision {old_state} -> {self.state}")
+    def generate_signal(self):
+        if not self.have_enough_info():
+            return
+
+        short_val = self.short_ma_analyzer.averages[-1]
+        long_val = self.long_ma_analyzer.averages[-1]
+
+        if self.psar_analyzer.is_rising and short_val > long_val:
+            return "sell"
+        elif not self.psar_analyzer.is_rising and short_val < long_val:
+            return "buy"
