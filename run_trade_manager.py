@@ -24,14 +24,14 @@ def create_strats_and_aggs(symbols):
 
 
 if __name__ == '__main__':
+    tracking_symbols = ["AAPL", "TSLA", "DIS", "GE", "HD"]
     live_trader = LiveTradeManager(
         PAPER,
+        lambda: create_strats_and_aggs(tracking_symbols),
         max_positions=1,
         dry_run=False,
         allow_margin=False,
         allow_shorting=False
     )
 
-    tracking_symbols = ["AAPL", "TSLA", "DIS", "GE", "HD"]
-    strategies, period_aggregators = create_strats_and_aggs(tracking_symbols)
-    live_trader.start_trading(strategies, period_aggregators)
+    live_trader.start_trading()

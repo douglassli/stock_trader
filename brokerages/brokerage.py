@@ -59,3 +59,10 @@ class AlpacaBrokerage:
         self.logger.info(f"Buying quantity {quantity} of stock {symb}")
         if not self.dry_run:
             return self.api.submit_order(symb, qty=quantity, side="buy", type="market", time_in_force="day")
+
+    def liquidate_and_cancel_all(self):
+        self.logger.warn("Cancelling all open orders and liquidating all positions")
+        return self.api.delete("/positions", data={"cancel_orders": True})
+
+    def get_clock(self):
+        return self.api.get_clock()

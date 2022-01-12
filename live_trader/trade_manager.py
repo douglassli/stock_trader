@@ -2,17 +2,19 @@ from brokerages.brokerage import AlpacaBrokerage
 from live_trader.stream_listener import start_listener_process
 from multiprocessing import Process, Queue
 from time import sleep
+from datetime import datetime, timedelta
 from utils.utils import get_queue_items, get_logger
 from exceptions import *
 
 
 class LiveTradeManager:
-    def __init__(self, account_type, max_positions=1, dry_run=True, allow_margin=False, allow_shorting=False):
+    def __init__(self, account_type, strat_agg_gen_func, max_positions=1, dry_run=True, allow_margin=False, allow_shorting=False):
         self.account_type = account_type
+        self.strat_agg_gen_func = strat_agg_gen_func
         self.max_positions = max_positions
         self.brokerage = AlpacaBrokerage(self.account_type, max_positions, dry_run)
-        self.signal_queue = Queue()
-        self.trade_update_queue = Queue()
+        self.signal_queue = None
+        self.trade_update_queue = None
         self.listener_process = None
 
         # {
@@ -33,22 +35,74 @@ class LiveTradeManager:
         self.buying_power = None
         self.allow_margin = allow_margin
         self.allow_shorting = allow_shorting
-        self.loop_time = 10
+        self.next_open_utc = None
+        self.next_close_utc = None
+        self.next_clean_up_utc = None
+        self.market_open = False
+        self.loop_time = 5
         self.logger = get_logger("live_trade_manager")
 
-    def start_trading(self, strategies, period_aggregators):
+    def start_trading(self):
+        self.update_times()
+        self.logger.debug("Starting main loop")
+        self.main_loop()
+
+    def start_listener(self):
+        self.logger.info("Starting listener process")
+        self.trade_update_queue = Queue()
+        self.signal_queue = Queue()
+        strategies, period_aggregators = self.strat_agg_gen_func()
         p_args = (self.account_type, self.signal_queue, self.trade_update_queue, strategies, period_aggregators)
         self.listener_process = Process(target=start_listener_process, args=p_args)
-        self.logger.debug("Listener process starting...")
         self.listener_process.start()
-        self.logger.debug("Starting main loop...")
-        self.main_loop()
 
     def main_loop(self):
         while True:
-            self.update_position_states()
-            self.make_trade_decisions()
+            self.check_time()
+
+            if self.trade_update_queue is not None:
+                self.update_position_states()
+
+            if self.signal_queue is not None:
+                self.make_trade_decisions()
+
             sleep(self.loop_time)
+
+    def check_time(self):
+        cur_dt = datetime.utcnow()
+        if cur_dt > self.next_open_utc or cur_dt > self.next_close_utc:
+            self.update_times()
+
+        if self.listener_process is not None and self.next_clean_up_utc < cur_dt < self.next_close_utc:
+            self.stop_for_day()
+        elif self.listener_process is None and (self.market_open or cur_dt > self.next_open_utc - timedelta(hours=4)):
+            self.start_listener()
+
+    def update_times(self):
+        clock = self.brokerage.get_clock()
+        self.next_open_utc = datetime.utcfromtimestamp(clock.next_open.timestamp())
+        self.next_close_utc = datetime.utcfromtimestamp(clock.next_open.timestamp())
+        self.next_clean_up_utc = self.next_close_utc - timedelta(minutes=5)
+        self.market_open = clock.is_open
+        self.logger.info(f"Market is now {'open' if self.market_open else 'closed'}")
+
+    def stop_for_day(self):
+        if self.listener_process is None or self.signal_queue is None or self.trade_update_queue is None:
+            self.logger.error("Attempting to shut down process and queues that don't exist")
+            self.shutdown()
+
+        self.logger.info("Ending trading for the day")
+        self.brokerage.liquidate_and_cancel_all()
+
+        self.listener_process.terminate()
+        self.listener_process.join()
+        self.listener_process.close()
+        self.listener_process = None
+
+        self.trade_update_queue.close()
+        self.signal_queue.close()
+        self.trade_update_queue = None
+        self.signal_queue = None
 
     def update_position_states(self):
         for trade_update in get_queue_items(self.trade_update_queue):
@@ -90,7 +144,9 @@ class LiveTradeManager:
             elif signal["type"] == "buy" and symbol not in self.positions:
                 buy_signals.append(signal)
 
-        if len(buy_signals) == 0 or len(self.positions) >= self.max_positions:
+        if not self.market_open or \
+                len(buy_signals) == 0 or \
+                len(self.positions) >= self.max_positions:
             return
 
         best_signal = self.get_best_signal(buy_signals)
@@ -150,7 +206,16 @@ class LiveTradeManager:
         pass
 
     def shutdown(self):
-        self.listener_process.terminate()
-        self.signal_queue.close()
-        self.trade_update_queue.close()
+        self.logger.warn("Shutting down system")
+        if self.listener_process is not None:
+            self.listener_process.terminate()
+            self.listener_process.join()
+            self.listener_process.close()
+
+        if self.trade_update_queue is not None:
+            self.trade_update_queue.close()
+
+        if self.signal_queue is not None:
+            self.signal_queue.close()
+
         exit(0)
