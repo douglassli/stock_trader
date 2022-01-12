@@ -8,7 +8,8 @@ from exceptions import *
 
 
 class LiveTradeManager:
-    def __init__(self, account_type, strat_agg_gen_func, max_positions=1, dry_run=True, allow_margin=False, allow_shorting=False):
+    def __init__(self, account_type, strat_agg_gen_func, max_positions=1,
+                 dry_run=True, allow_margin=False, allow_shorting=False):
         self.account_type = account_type
         self.strat_agg_gen_func = strat_agg_gen_func
         self.max_positions = max_positions
@@ -75,24 +76,24 @@ class LiveTradeManager:
 
         if self.listener_process is not None and self.next_clean_up_utc < cur_dt < self.next_close_utc:
             self.stop_for_day()
-        elif self.listener_process is None and (self.market_open or cur_dt > self.next_open_utc - timedelta(hours=4)):
+        elif self.listener_process is None and ((self.market_open and cur_dt < self.next_clean_up_utc) or cur_dt > self.next_open_utc - timedelta(hours=4)):
             self.start_listener()
 
     def update_times(self):
         clock = self.brokerage.get_clock()
         self.next_open_utc = datetime.utcfromtimestamp(clock.next_open.timestamp())
-        self.next_close_utc = datetime.utcfromtimestamp(clock.next_open.timestamp())
+        self.next_close_utc = datetime.utcfromtimestamp(clock.next_close.timestamp())
         self.next_clean_up_utc = self.next_close_utc - timedelta(minutes=5)
         self.market_open = clock.is_open
         self.logger.info(f"Market is now {'open' if self.market_open else 'closed'}")
 
     def stop_for_day(self):
+        self.logger.info("Ending trading for the day")
+        self.brokerage.liquidate_and_cancel_all()
+
         if self.listener_process is None or self.signal_queue is None or self.trade_update_queue is None:
             self.logger.error("Attempting to shut down process and queues that don't exist")
             self.shutdown()
-
-        self.logger.info("Ending trading for the day")
-        self.brokerage.liquidate_and_cancel_all()
 
         self.listener_process.terminate()
         self.listener_process.join()
@@ -108,10 +109,10 @@ class LiveTradeManager:
         for trade_update in get_queue_items(self.trade_update_queue):
             do_nothing_events = ["new", "partial_fill", "pending_new", "stopped", "pending_cancel", "pending_replace",
                                  "calculated", "order_replace_rejected", "order_cancel_rejected", "done_for_day"]
-            event = trade_update.event
-            order = trade_update.order
+            event = trade_update['event']
+            order = trade_update['order']
 
-            self.logger.info(f"Trade updated, symbol: {order.symbol}, event: {event}, order id: {order.id}")
+            self.logger.info(f"Trade updated, symbol: {order['symbol']}, event: {event}, order id: {order['id']}")
 
             if event in do_nothing_events:
                 pass
@@ -119,18 +120,23 @@ class LiveTradeManager:
                 self.fill_order(trade_update)
             elif event in ["cancelled", "rejected", "suspended", "replaced", "expired"]:
                 # TODO should probably deal with this more gracefully
-                self.logger.error(f"Order was killed with event: {event}, symbol: {order.symbol}, order id: {order.id}")
+                self.logger.error(f"Order was killed with event: {event}, symbol: {order['symbol']}, order id: {order['id']}")
                 self.shutdown()
 
     def fill_order(self, trade_update):
-        order = trade_update.order
-        self.logger.info(f"Filling {order.side} order for {order.symbol}")
+        order = trade_update['order']
+        self.logger.info(f"Filling {order['side']} order for {order['symbol']}")
 
-        self.open_orders.pop(order.id, None)
-        if order.side == "buy":
-            self.positions[order.symbol]["entrance_price"] = float(trade_update.price)
-        elif order.side == "sell":
-            self.positions.pop(order.symbol, None)
+        open_order = self.open_orders[order['symbol']]
+        if open_order is None or open_order['order_id'] != order['id']:
+            self.logger.error(f"Recieved update for non-tracked order: {order['symbol']}, {order['id']}")
+            self.shutdown()
+
+        self.open_orders.pop(order['symbol'], None)
+        if order['side'] == "buy":
+            self.positions[order['symbol']]["entrance_price"] = float(trade_update['price'])
+        elif order['side'] == "sell":
+            self.positions.pop(order['symbol'], None)
 
     def make_trade_decisions(self):
         signals = {}
@@ -202,7 +208,9 @@ class LiveTradeManager:
 
     def synchronize_account(self):
         # TODO
-        self.logger.warn("Synchronizing account")
+        # self.logger.warn("Synchronizing account")
+        self.logger.error("Synchronize not implemented")
+        self.shutdown()
         pass
 
     def shutdown(self):

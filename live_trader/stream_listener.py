@@ -15,14 +15,7 @@ class StreamListener:
         self.logger = get_logger("stream_listener")
 
     async def trade_update_callback(self, trade_update):
-        order = trade_update.order
-        trade_update_msg = {
-            "symbol": order.symbol,
-            "order_id": order.id,
-            "event": trade_update.event,
-            "timestamp": trade_update.timestamp
-        }
-        self.trade_update_queue.put(trade_update_msg)
+        self.trade_update_queue.put(trade_update._raw)
 
     def get_quote_call_back(self, symbol):
         async def quote_callback(q):
