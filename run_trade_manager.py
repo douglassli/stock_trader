@@ -24,11 +24,29 @@ def create_strats_and_aggs(symbols):
 
 
 if __name__ == '__main__':
-    tracking_symbols = ["AAPL", "TSLA", "DIS", "GE", "HD"]
+    tracking_symbols = [
+        "AAPL",
+        "TSLA",
+        "DIS",
+        "GE",
+        "HD",
+        "BRK.B",
+        "JPM",
+        "NFLX",
+        "BA",
+        "JNJ",
+        "PFE",
+        "T",
+        "WMT",
+        "XOM",
+        "CVX",
+        "CAT"
+    ]
+
     live_trader = LiveTradeManager(
         PAPER,
         lambda: create_strats_and_aggs(tracking_symbols),
-        max_positions=1,
+        max_positions=4,
         dry_run=False,
         allow_margin=False,
         allow_shorting=False

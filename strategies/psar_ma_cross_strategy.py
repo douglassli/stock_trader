@@ -50,6 +50,6 @@ class PSARCrossStrategy:
         long_val = self.long_ma_analyzer.averages[-1]
 
         if self.psar_analyzer.is_rising and short_val > long_val:
-            return "sell"
-        elif not self.psar_analyzer.is_rising and short_val < long_val:
             return "buy"
+        elif not self.psar_analyzer.is_rising and short_val < long_val:
+            return "sell"

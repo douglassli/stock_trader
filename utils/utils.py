@@ -1,4 +1,3 @@
-from datetime import datetime
 from utils.constants import *
 import os
 from alpaca_trade_api.rest import REST
@@ -10,7 +9,7 @@ from datetime import datetime
 from queue import Empty
 
 
-def get_logger(name, log_file_name=f"logs/{datetime.now().isoformat()}.log"):
+def get_logger(name, log_file_name=f"logs/trade_manager.log"):
     log = logging.getLogger(name)
     if len(log.handlers) == 0:
         log.setLevel(logging.DEBUG)
@@ -18,7 +17,7 @@ def get_logger(name, log_file_name=f"logs/{datetime.now().isoformat()}.log"):
         ch = logging.StreamHandler(sys.stdout)
         ch.setLevel(logging.DEBUG)
         ch.setFormatter(formatter)
-        fh = logging.FileHandler(log_file_name, "w")
+        fh = logging.FileHandler(log_file_name, "a")
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(formatter)
         log.addHandler(ch)
