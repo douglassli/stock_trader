@@ -1,15 +1,16 @@
 from utils.utils import get_logger, get_alpaca_stream
 from datetime import datetime
 from utils.quote import Quote
+from utils.period_aggregator import PeriodAggregator
 
 
 class StreamListener:
-    def __init__(self, account_type, signal_queue, trade_update_queue, strategies, period_aggregators):
+    def __init__(self, account_type, period_queue, trade_update_queue, symbols, timeframe):
         self.account_type = account_type
-        self.signal_queue = signal_queue
+        self.period_queue = period_queue
         self.trade_update_queue = trade_update_queue
-        self.strategies = strategies
-        self.period_aggregators = period_aggregators
+        self.symbols = symbols
+        self.period_aggregators = {s: PeriodAggregator(timeframe) for s in symbols}
         self.quote_counts = {}
         self.period_counts = {}
         self.logger = get_logger("stream_listener")
@@ -32,7 +33,6 @@ class StreamListener:
         dt = datetime.utcfromtimestamp(api_q.timestamp.timestamp())
         quote = Quote(dt, float(api_q.ask_price), int(api_q.ask_size), float(api_q.bid_price), int(api_q.bid_size))
 
-        strategy = self.strategies[symbol]
         period_aggregator = self.period_aggregators[symbol]
 
         finished_period = period_aggregator.process_quote(quote)
@@ -40,26 +40,22 @@ class StreamListener:
             self.period_counts[symbol] = self.period_counts.get(symbol, 0) + 1
             self.logger.info(f"FINISHED {symbol} PERIOD {self.period_counts[symbol]}, {self.quote_counts[symbol]} QUOTES")
             self.quote_counts[symbol] = 0
-            strategy.update_analyzer_vals(period_aggregator)
 
-            signal = strategy.generate_signal()  # TODO
-            if signal is not None:
-                signal_message = {
-                    "symbol": symbol,
-                    "type": signal,
-                    "strength": None,  # TODO
-                    "timestamp": dt
-                }
-                self.signal_queue.put(signal_message)
+            period = period_aggregator.periods[-1]
+            msg = {
+                "symbol": symbol,
+                "period": period
+            }
+            self.period_queue.put(msg)
 
     def start(self):
         stream = get_alpaca_stream(self.account_type)
         stream.subscribe_trade_updates(self.trade_update_callback)
-        for symbol in self.strategies.keys():
+        for symbol in self.symbols:
             stream.subscribe_quotes(self.get_quote_call_back(symbol), symbol)
         stream.run()
 
 
-def start_listener_process(account_type, signal_queue, trade_update_queue, strategies, period_aggregators):
-    stream_listener = StreamListener(account_type, signal_queue, trade_update_queue, strategies, period_aggregators)
+def start_listener_process(account_type, signal_queue, trade_update_queue, symbols, timeframe):
+    stream_listener = StreamListener(account_type, signal_queue, trade_update_queue, symbols, timeframe)
     stream_listener.start()

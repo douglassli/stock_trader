@@ -45,7 +45,8 @@ if __name__ == '__main__':
 
     live_trader = LiveTradeManager(
         PAPER,
-        lambda: create_strats_and_aggs(tracking_symbols),
+        tracking_symbols,
+        create_strats_and_aggs,
         max_positions=4,
         dry_run=False,
         allow_margin=False,

@@ -8,15 +8,18 @@ from exceptions import *
 
 
 class LiveTradeManager:
-    def __init__(self, account_type, strat_agg_gen_func, max_positions=1,
+    def __init__(self, account_type, symbols, strat_agg_gen_func, max_positions=1,
                  dry_run=True, allow_margin=False, allow_shorting=False):
         self.account_type = account_type
+        self.symbols = symbols
         self.strat_agg_gen_func = strat_agg_gen_func
         self.max_positions = max_positions
         self.brokerage = AlpacaBrokerage(self.account_type, max_positions, dry_run)
-        self.signal_queue = None
+        self.period_queue = None
         self.trade_update_queue = None
         self.listener_process = None
+        self.period_aggregators = None
+        self.strategies = None
 
         # {
         #   symbol: {
@@ -51,9 +54,12 @@ class LiveTradeManager:
     def start_listener(self):
         self.logger.info("Starting listener process")
         self.trade_update_queue = Queue()
-        self.signal_queue = Queue()
-        strategies, period_aggregators = self.strat_agg_gen_func()
-        p_args = (self.account_type, self.signal_queue, self.trade_update_queue, strategies, period_aggregators)
+        self.period_queue = Queue()
+        strategies, per_aggs = self.strat_agg_gen_func(self.symbols)
+        timeframe = per_aggs.values()[0].timeframe
+        self.strategies = strategies
+        self.period_aggregators = per_aggs
+        p_args = (self.account_type, self.period_queue, self.trade_update_queue, self.symbols, timeframe)
         self.listener_process = Process(target=start_listener_process, args=p_args)
         self.listener_process.start()
 
@@ -64,8 +70,8 @@ class LiveTradeManager:
             if self.trade_update_queue is not None:
                 self.update_position_states()
 
-            if self.signal_queue is not None:
-                self.make_trade_decisions()
+            if self.period_queue is not None:
+                self.process_periods()
 
             sleep(self.loop_time)
 
@@ -85,13 +91,13 @@ class LiveTradeManager:
         self.next_close_utc = datetime.utcfromtimestamp(clock.next_close.timestamp())
         self.next_clean_up_utc = self.next_close_utc - timedelta(minutes=5)
         self.market_open = clock.is_open
-        self.logger.info(f"Market is now {'open' if self.market_open else 'closed'}")
+        self.logger.info(f"Market is {'open' if self.market_open else 'closed'}")
 
     def stop_for_day(self):
         self.logger.info("Ending trading for the day")
         self.brokerage.liquidate_and_cancel_all()
 
-        if self.listener_process is None or self.signal_queue is None or self.trade_update_queue is None:
+        if self.listener_process is None or self.period_queue is None or self.trade_update_queue is None:
             self.logger.error("Attempting to shut down process and queues that don't exist")
             self.shutdown()
 
@@ -101,9 +107,11 @@ class LiveTradeManager:
         self.listener_process = None
 
         self.trade_update_queue.close()
-        self.signal_queue.close()
+        self.period_queue.close()
         self.trade_update_queue = None
-        self.signal_queue = None
+        self.period_queue = None
+
+        self.strategies = None
 
     def update_position_states(self):
         for trade_update in get_queue_items(self.trade_update_queue):
@@ -138,28 +146,33 @@ class LiveTradeManager:
         elif order['side'] == "sell":
             self.positions.pop(order['symbol'], None)
 
-    def make_trade_decisions(self):
-        signals = {}
-        for signal in get_queue_items(self.signal_queue):
-            signals[signal['symbol']] = signal
+    def process_periods(self):
+        updated_symbols = set()
+        for per_msg in get_queue_items(self.period_queue):
+            symbol = per_msg["symbol"]
+            period = per_msg["period"]
+            updated_symbols.add(symbol)
+            self.period_aggregators[symbol].process_period(period)
+            strategy = self.strategies[symbol]
+            strategy.update_analyzer_vals(self.period_aggregators[symbol])
 
-        buy_signals = []
-        for symbol, signal in signals.items():
-            if symbol in self.positions and signal["type"] == "sell":
+        buys = []
+        for symbol in updated_symbols:
+            signal = self.strategies[symbol].generate_signal()
+            if signal == "buy" and symbol not in self.positions:
+                buys.append(symbol)
+            elif signal == "sell" and symbol in self.positions:
                 self.exit_position(signal)
-            elif signal["type"] == "buy" and symbol not in self.positions:
-                buy_signals.append(signal)
 
         if not self.market_open or \
-                len(buy_signals) == 0 or \
+                len(buys) == 0 or \
                 len(self.positions) >= self.max_positions:
             return
 
-        best_signal = self.get_best_signal(buy_signals)
+        best_signal = self.get_best_signal(buys)
         self.enter_position(best_signal)
 
-    def enter_position(self, signal):
-        symbol = signal['symbol']
+    def enter_position(self, symbol):
         if symbol in self.positions or len(self.positions) >= self.max_positions:
             return
 
@@ -181,8 +194,7 @@ class LiveTradeManager:
         except NotEnoughCashError:
             pass
 
-    def exit_position(self, signal):
-        symbol = signal['symbol']
+    def exit_position(self, symbol):
         if symbol not in self.positions:
             return
         elif symbol in self.open_orders:
@@ -223,7 +235,7 @@ class LiveTradeManager:
         if self.trade_update_queue is not None:
             self.trade_update_queue.close()
 
-        if self.signal_queue is not None:
-            self.signal_queue.close()
+        if self.period_queue is not None:
+            self.period_queue.close()
 
         exit(0)
