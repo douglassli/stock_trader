@@ -7,6 +7,9 @@ import logging
 import sys
 from datetime import datetime
 from queue import Empty
+from csv import DictReader
+from utils.period_aggregator import Period
+from utils.quote import Quote
 
 
 def get_logger(name, log_file_name=f"logs/trade_manager.log"):
@@ -74,3 +77,37 @@ def get_queue_items(queue):
             yield item
         except Empty:
             return
+
+
+def quotes_from_file(filename):
+    out = []
+    with open(filename, newline='') as csvfile:
+        reader = DictReader(csvfile, fieldnames=['t', 'ap', 'as', 'bp', 'bs'])
+        for row in reader:
+            dt = parse_timestamp(row['t'])
+            q = Quote(dt, float(row['ap']), int(row['as']), float(row['bp']), int(row['bs']))
+            out.append(q)
+
+    return out
+
+
+def periods_from_file(filename):
+    out = []
+    with open(filename, newline='') as csvfile:
+        reader = DictReader(csvfile, fieldnames=['timeframe', 'start_time', 'end_time', 'open', 'close', 'high', 'low', 'volume'])
+        next(reader)
+        for row in reader:
+            start_dt = parse_timestamp(row['start_time'])
+            end_dt = parse_timestamp(row['end_time'])
+            p = Period(int(row['timeframe']),
+                       start_dt,
+                       end_dt,
+                       float(row['open']),
+                       float(row['close']),
+                       float(row['high']),
+                       float(row['low']),
+                       int(row['volume'])
+                       )
+            out.append(p)
+
+    return out

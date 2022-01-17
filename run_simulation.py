@@ -1,7 +1,7 @@
 from analyzers.weighted_volume_ma_analyzer import VWMAAnalyzer
 from brokerages.simulated_brokerage import SimulatedBrokerage
 from datetime import datetime, time
-from utils.utils import format_datetime, parse_timestamp, get_alpaca_rest_api
+from utils.utils import format_datetime, get_alpaca_rest_api, quotes_from_file, periods_from_file
 from utils.constants import PAPER
 from utils.period_aggregator import PeriodAggregator, Period
 from strategies.trivial_strategy import TrivialStrategy
@@ -18,7 +18,7 @@ from analyzers.arnaud_legoux_ma_analyzer import ALMAAnalyzer
 from analyzers.parabolic_sar_analyzer import PSARAnalyzer
 from analyzers.simulation_analyzer_manager import SimulationAnalyzerManager
 import logging
-from csv import DictReader, DictWriter
+from csv import DictWriter
 from tqdm import tqdm
 from pathlib import Path
 
@@ -39,40 +39,6 @@ def quotes_from_api(symb, start_date_str, end_date_str):
     start = datetime.strptime(start_date_str, '%Y-%m-%dT%H:%M:%S')
     end = datetime.strptime(end_date_str, '%Y-%m-%dT%H:%M:%S')
     return rest_api.get_quotes(symb, format_datetime(start), format_datetime(end))
-
-
-def quotes_from_file(filename):
-    out = []
-    with open(filename, newline='') as csvfile:
-        reader = DictReader(csvfile, fieldnames=['t', 'ap', 'as', 'bp', 'bs'])
-        for row in reader:
-            dt = parse_timestamp(row['t'])
-            q = Quote(dt, float(row['ap']), int(row['as']), float(row['bp']), int(row['bs']))
-            out.append(q)
-
-    return out
-
-
-def periods_from_file(filename):
-    out = []
-    with open(filename, newline='') as csvfile:
-        reader = DictReader(csvfile, fieldnames=['timeframe', 'start_time', 'end_time', 'open', 'close', 'high', 'low', 'volume'])
-        next(reader)
-        for row in reader:
-            start_dt = parse_timestamp(row['start_time'])
-            end_dt = parse_timestamp(row['end_time'])
-            p = Period(int(row['timeframe']),
-                       start_dt,
-                       end_dt,
-                       float(row['open']),
-                       float(row['close']),
-                       float(row['high']),
-                       float(row['low']),
-                       int(row['volume'])
-                       )
-            out.append(p)
-
-    return out
 
 
 def generate_generic_ma_slope_strats(symbol, init_cash, ma_analyzer_class, strat_prefix):
