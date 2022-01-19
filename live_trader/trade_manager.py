@@ -56,7 +56,7 @@ class LiveTradeManager:
         self.trade_update_queue = Queue()
         self.period_queue = Queue()
         strategies, per_aggs = self.strat_agg_gen_func(self.symbols)
-        timeframe = per_aggs.values()[0].timeframe
+        timeframe = list(per_aggs.values())[0].timeframe
         self.strategies = strategies
         self.period_aggregators = per_aggs
         p_args = (self.account_type, self.period_queue, self.trade_update_queue, self.symbols, timeframe)
@@ -162,15 +162,15 @@ class LiveTradeManager:
             if signal == "buy" and symbol not in self.positions:
                 buys.append(symbol)
             elif signal == "sell" and symbol in self.positions:
-                self.exit_position(signal)
+                self.exit_position(symbol)
 
         if not self.market_open or \
                 len(buys) == 0 or \
                 len(self.positions) >= self.max_positions:
             return
 
-        best_signal = self.get_best_signal(buys)
-        self.enter_position(best_signal)
+        best_buy_symbol = self.get_best_signal(buys)
+        self.enter_position(best_buy_symbol)
 
     def enter_position(self, symbol):
         if symbol in self.positions or len(self.positions) >= self.max_positions:
