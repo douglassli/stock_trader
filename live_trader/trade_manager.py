@@ -121,6 +121,7 @@ class LiveTradeManager:
             order = trade_update['order']
 
             self.logger.info(f"Trade updated, symbol: {order['symbol']}, event: {event}, order id: {order['id']}")
+            self.logger.debug(order)
 
             if event in do_nothing_events:
                 pass
@@ -133,17 +134,20 @@ class LiveTradeManager:
 
     def fill_order(self, trade_update):
         order = trade_update['order']
-        self.logger.info(f"Filling {order['side']} order for {order['symbol']}")
+        symbol = order["symbol"]
+        side = order["side"]
+        self.logger.info(f"Filling {order['side']} order for {symbol} of class {order['order_class']} and type {order['order_type']}")
 
-        open_order = self.open_orders[order['symbol']]
-        if open_order is None or open_order['order_id'] != order['id']:
-            self.logger.error(f"Recieved update for non-tracked order: {order['symbol']}, {order['id']}")
-            self.shutdown()
+        # TODO shouldn't happen if I dont manually place any orders
+        # open_order = self.open_orders[symbol]
+        # if symbol not in self.open_orders or open_order['order_id'] != order['id']:
+        #     self.logger.error(f"Received update for non-tracked order: {symbol}, {order['id']}")
+        #     self.shutdown()
 
-        self.open_orders.pop(order['symbol'], None)
-        if order['side'] == "buy":
-            self.positions[order['symbol']]["entrance_price"] = float(trade_update['price'])
-        elif order['side'] == "sell":
+        self.open_orders.pop(symbol, None)
+        if side == "buy":
+            self.positions[symbol]["entrance_price"] = float(trade_update['price'])
+        elif side == "sell":
             self.positions.pop(order['symbol'], None)
 
     def process_periods(self):
