@@ -1,4 +1,5 @@
 from analyzers.base_analyzer import BaseAnalyzer
+from utils.constants import PSAR_TRACE
 
 
 # Parabolic Stop And Reverse Analyzer
@@ -13,6 +14,18 @@ class PSARAnalyzer(BaseAnalyzer):
         self.low_ep = None
         self.is_rising = False
         self.sars = []
+
+    def name(self):
+        return f"psar_{self.accel_factor}_{self.max_step}"
+
+    def trace_type(self):
+        return PSAR_TRACE
+
+    def get_last_value(self):
+        if len(self.sars) == 0:
+            return None
+        else:
+            return self.sars[-1]
 
     # See below for math
     # https://school.stockcharts.com/doku.php?id=technical_indicators:parabolic_sar

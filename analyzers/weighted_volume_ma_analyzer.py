@@ -1,4 +1,5 @@
 from analyzers.base_analyzer import BaseAnalyzer
+from utils.constants import MA_TRACE
 
 
 # Volume Weighted Moving Average Analyzer
@@ -7,6 +8,18 @@ class VWMAAnalyzer(BaseAnalyzer):
         self.length = length  # Number of periods to average
         self.averages = []
         self.source = source
+
+    def name(self):
+        return f"vwma_{self.length}_{self.source}"
+
+    def trace_type(self):
+        return MA_TRACE
+
+    def get_last_value(self):
+        if len(self.averages) == 0:
+            return None
+        else:
+            return self.averages[-1]
 
     # See below for math
     # https://www.tradingsetupsreview.com/volume-weighted-moving-average-vwma/

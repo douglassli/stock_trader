@@ -5,6 +5,8 @@ from time import sleep
 from datetime import datetime, timedelta
 from utils.utils import get_queue_items, get_logger
 from exceptions import *
+from dash_server.webserver import start_webserver_process
+from utils.constants import COST_TRACE
 
 
 class LiveTradeManager:
@@ -17,7 +19,9 @@ class LiveTradeManager:
         self.brokerage = AlpacaBrokerage(self.account_type, max_positions, dry_run)
         self.period_queue = None
         self.trade_update_queue = None
+        self.webserver_queue = None
         self.listener_process = None
+        self.webserver_process = None
         self.period_aggregators = None
         self.strategies = None
 
@@ -49,6 +53,7 @@ class LiveTradeManager:
     def start_trading(self):
         self.update_times()
         self.logger.debug("Starting main loop")
+        self.start_webserver()
         self.main_loop()
 
     def start_listener(self):
@@ -62,6 +67,13 @@ class LiveTradeManager:
         p_args = (self.account_type, self.period_queue, self.trade_update_queue, self.symbols, timeframe)
         self.listener_process = Process(target=start_listener_process, args=p_args)
         self.listener_process.start()
+
+    def start_webserver(self):
+        self.logger.info("Starting webserver process")
+        self.webserver_queue = Queue()
+        p_args = (self.webserver_queue,)
+        self.webserver_process = Process(target=start_webserver_process, args=p_args)
+        self.webserver_process.start()
 
     def main_loop(self):
         while True:
@@ -159,6 +171,18 @@ class LiveTradeManager:
             self.period_aggregators[symbol].process_period(period)
             strategy = self.strategies[symbol]
             strategy.update_analyzer_vals(self.period_aggregators[symbol])
+
+            trace_points = strategy.get_last_trace_points()
+            trace_points['cost'] = {
+                'point': period.close,
+                'trace_type': COST_TRACE
+            }
+
+            self.webserver_queue.put({
+                'symbol': symbol,
+                'timestamp': period.end_time,
+                'trace_points': trace_points
+            })
 
         buys = []
         for symbol in updated_symbols:

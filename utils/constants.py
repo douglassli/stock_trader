@@ -12,3 +12,13 @@ PAPER_ENDPOINT = "https://paper-api.alpaca.markets"
 LIVE_ENDPOINT = "https://api.alpaca.markets"
 
 DATA_FEED = "SIP"
+
+COST_TRACE = "cost_trace"
+MA_TRACE = "ma_trace"
+PSAR_TRACE = "psar_trace"
+
+TRACE_MODES = {
+    COST_TRACE: "lines",
+    MA_TRACE: "lines",
+    PSAR_TRACE: "markers",
+}

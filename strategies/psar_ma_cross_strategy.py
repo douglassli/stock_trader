@@ -15,6 +15,19 @@ class PSARCrossStrategy:
         self.short_ma_analyzer.update_values(period_aggregator)
         self.long_ma_analyzer.update_values(period_aggregator)
 
+    def get_analyzers(self):
+        return [self.psar_analyzer, self.short_ma_analyzer, self.long_ma_analyzer]
+
+    def get_last_trace_points(self):
+        trace_points = {}
+        for analyzer in self.get_analyzers():
+            trace_points[analyzer.name()] = {
+                'point': analyzer.get_last_value(),
+                'trace_type': analyzer.trace_type()
+            }
+
+        return trace_points
+
     def have_enough_info(self):
         if len(self.psar_analyzer.sars) == 0:
             return False
